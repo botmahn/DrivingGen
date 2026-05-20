@@ -19,7 +19,7 @@ def compute_fvd(opts, max_real: int, num_gen: int, num_frames: int, subsample_fa
     # Perfectly reproduced torchscript version of the I3D model, trained on Kinetics-400, used here:
     # https://github.com/google-research/google-research/blob/master/frechet_video_distance/frechet_video_distance.py
     # Note that the weights on tf.hub (used in the script above) differ from the original released weights
-    detector_url = '/shared_disk/users/yang.zhou/iclr_open_source/DrivingGen/ckpt/i3d_torchscript.pt'
+    detector_url = '/scratch/naman/DrivingGen/pretrained_models/i3d_torchscript.pt'
     detector_kwargs = dict(rescale=True, resize=True, return_features=True) # Return raw features before the softmax layer.
 
     opts = copy.deepcopy(opts)
