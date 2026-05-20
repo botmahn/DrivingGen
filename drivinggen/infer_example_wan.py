@@ -242,7 +242,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         type=str,
-        default="wan2.2-14b",
+        default="wan2.2-5b",
         help="Model identifier used as a sub-directory name in the output path. "
              "Default: 'wan2.2-14b'."
     )

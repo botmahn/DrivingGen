@@ -122,7 +122,7 @@ def init_det_model():
 
     # Load YOLOv10x from the project's checkpoint directory and move to CUDA.
     det_model = YOLOv10(
-        '/shared_disk/users/yang.zhou/iclr_open_source/DrivingGen/ckpt/yolov10x.pt'
+        '/scratch/naman/DrivingGen/pretrained_models/yolov10x.pt'
     ).cuda()
 
 
@@ -605,7 +605,8 @@ if __name__ == '__main__':
         # -----------------------------------------------------------------------
         # Assemble depth frames into a video for visual inspection.
         # -----------------------------------------------------------------------
-        from moviepy.editor import ImageSequenceClip
+        # from moviepy.editor import ImageSequenceClip
+        from moviepy import ImageSequenceClip
 
         def images_to_video(image_folder: str, output_video: str, fps: int = 30):
             """Write all PNG/JPG images in a directory to an MP4 video.
@@ -627,7 +628,7 @@ if __name__ == '__main__':
             clip.write_videofile(
                 output_video,
                 codec="libx264",
-                verbose=False,
+                # verbose=False,
                 logger=None   # suppress moviepy progress output
             )
 
