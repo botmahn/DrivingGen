@@ -5,6 +5,7 @@ from scipy import interpolate
 
 def load_ckpt(model, path):
     """ Load checkpoint """
+    path = "/scratch/naman/DrivingGen/pretrained_models/Tartan-C-T-TSKH-kitti432x960-M.pth"
     state_dict = torch.load(path, map_location=torch.device('cpu'))
     model.load_state_dict(state_dict, strict=False)
 

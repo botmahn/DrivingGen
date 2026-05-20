@@ -421,8 +421,12 @@ if __name__ == '__main__':
     # Step 1: Enumerate scene directories under root_path
     # ------------------------------------------------------------------
     runs = os.listdir(args.root_path)
-    # Keep only directories (ignore stray files)
-    runs = [run for run in runs if os.path.isdir(os.path.join(args.root_path, run))]
+    # Keep only directories (ignore stray files and FVD symlink staging dirs)
+    runs = [
+        run for run in runs
+        if os.path.isdir(os.path.join(args.root_path, run))
+        and not run.startswith('+')
+    ]
     debug = args.debug
 
     print(f'all {len(runs)} runs')
