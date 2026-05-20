@@ -400,6 +400,11 @@ if __name__ == '__main__':
                         help='Experiment identifier suffix.')
     parser.add_argument('--debug',      type=int, default=0,
                         help='Enable debug mode (non-zero) for additional logging.')
+    parser.add_argument('--cache_dir',  type=str, default='./cache',
+                        help='Root directory for metric cache files (default: ./cache).')
+    parser.add_argument('--cache_name', type=str, default=None,
+                        help='Name for the cache sub-folder. Defaults to the last '
+                             'component of --root_path (i.e. the track name).')
     parser.add_argument('--metric',     type=str, default='fvd',
                         choices=['fvd', 'obj_q', 'sub_q', 'v_consist',
                                  'a_consist', 'a_missing', 'all', 'all_no_vlm'],
@@ -591,13 +596,15 @@ if __name__ == '__main__':
         # Returns a scalar mean aesthetic quality score.
         subjective_quality = get_subjective_quality(pred_imgs)
 
+    # ---- Resolve cache root and name once for all metrics ----------------------
+    cache_name = args.cache_name if args.cache_name is not None \
+                 else args.root_path.rstrip('/').split('/')[-1]
+
     # ---- Visual / scene consistency (DINOv2 + optical flow) --------------------
     scene_consistency    = -1   # sentinel
     gt_scene_consistency = -1   # sentinel
     if args.metric in ('v_consist', 'all', 'all_no_vlm'):
-        # Cache directory keyed by data track name to avoid recomputation
-        track     = args.root_path.split('/')[-1]
-        cache_dir = os.path.join('./cache/v_consist', track)
+        cache_dir = os.path.join(args.cache_dir, 'v_consist', cache_name)
         os.makedirs(cache_dir, exist_ok=True)
 
         # One cache subdirectory per scene for storing DINOv2 features
@@ -609,8 +616,7 @@ if __name__ == '__main__':
     # ---- Agent appearance consistency (DINOv2 crop similarity) -----------------
     agent_consistency = -1   # sentinel
     if args.metric in ('a_consist', 'all', 'all_no_vlm'):
-        track     = args.root_path.split('/')[-1]
-        cache_dir = os.path.join('./cache/a_consist', track)
+        cache_dir = os.path.join(args.cache_dir, 'a_consist', cache_name)
         os.makedirs(cache_dir, exist_ok=True)
 
         # Cache per valid scene (scenes without agent pkl files are excluded)
@@ -628,8 +634,7 @@ if __name__ == '__main__':
     # ---- Agent missing rate (Cosmos-Reason1 VLM) --------------------------------
     agent_missing = -1   # sentinel
     if args.metric == 'a_missing' or args.metric == 'all':
-        track     = args.root_path.split('/')[-1]
-        cache_dir = os.path.join('./cache/a_missing', track)
+        cache_dir = os.path.join(args.cache_dir, 'a_missing', cache_name)
         os.makedirs(cache_dir, exist_ok=True)
 
         a_missing_cache_dir = [f'{cache_dir}/{name}' for name in valid_agents_runs]
