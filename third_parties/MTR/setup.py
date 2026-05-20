@@ -32,7 +32,7 @@ def write_version_to_file(version, target_file):
 
 
 if __name__ == '__main__':
-    version = '0.1.0'
+    version = '0.1.0+%s' % get_git_commit_number()
     write_version_to_file(version, 'mtr/version.py')
 
     setup(

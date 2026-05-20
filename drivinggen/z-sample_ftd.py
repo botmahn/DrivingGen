@@ -711,6 +711,10 @@ if __name__ == '__main__':
 
         # Path to the SLAM output PKL for this scene
         log_base = os.path.join(args.outdir, s_name, model_name, exp_id, 'unidepth')
+        print(f"Log Base: {log_base}")
+        if not os.path.exists(log_base):
+            print(f"Skipping (log_base not found): {log_base}")
+            continue
         # Full path to PKL: <log_base>-estimate_ego_traj.pkl
 
         if args.track == 'ego_condition':
@@ -724,7 +728,12 @@ if __name__ == '__main__':
             # gt_local_xy: shape (101, 2) — (X_right, Z_forward)
 
         # ---- Load predicted trajectory PKL ---------------------------------
-        with open(log_base + '-estimate_ego_traj.pkl', 'rb') as f:
+        ego_traj_path = log_base.replace("/unidepth", "") + '/unidepth-estimate_ego_traj.pkl'
+        if not os.path.exists(ego_traj_path):
+            print(f"Skipping (ego_traj_path not found): {ego_traj_path}")
+            continue
+        #with open(log_base + '-estimate_ego_traj.pkl', 'rb') as f:
+        with open(ego_traj_path, 'rb') as f:
             data = pickle.load(f)              # dict with keys including 'locs'
             pred = data['locs'].astype(np.float32)
         # pred: shape (N, 2); SLAM output in (x_right, z_forward) convention
