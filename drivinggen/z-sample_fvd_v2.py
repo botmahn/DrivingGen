@@ -672,5 +672,15 @@ if __name__ == '__main__':
             # Lists, dicts, or other composite values printed as-is
             print(f"  {sub_key}: {sub_val}")
 
+    # ------------------------------------------------------------------
+    # Step 6: Save results to a .txt file inside the cache root
+    # ------------------------------------------------------------------
+    results_line = f"{model_name}: {metrics}"
+    results_path = os.path.join(args.cache_dir, cache_name, 'results.txt')
+    os.makedirs(os.path.dirname(results_path), exist_ok=True)
+    with open(results_path, 'a') as f:
+        f.write(results_line + '\n')
+    print(f"\nResults saved to: {results_path}")
+
     # Optional: cross-model comparison table (uncomment when evaluating multiple models)
     # print_by_metric(all_metrics)
