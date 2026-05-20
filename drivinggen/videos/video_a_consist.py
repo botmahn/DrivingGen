@@ -241,6 +241,8 @@ def stability_metric(
             img_path = os.path.join(img_dir, f"{fid:05}.png")
             if not os.path.exists(img_path):
                 img_path = img_path.replace('.png', '.jpg')
+            if not os.path.exists(img_path):
+                continue  # frame not saved (e.g. conditioning frame 0 was skipped)
 
             frame = Image.open(img_path)   # open as PIL RGB
             if frame is None:
