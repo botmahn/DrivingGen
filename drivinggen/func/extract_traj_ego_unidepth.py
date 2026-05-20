@@ -555,7 +555,8 @@ if __name__ == '__main__':
             # mask shape: (H, W) — uint8; 255=valid, 0=movable object
 
             # Apply the driving ROI mask: also exclude the non-driving upper region.
-            mask_wh = drive_roi_mask(576, 1024)
+            h_img, w_img = rgb.shape[:2]
+            mask_wh = drive_roi_mask(h_img, w_img)
             # mask_wh shape: (576, 1024) — uint8; 255 inside ROI, 0 outside
 
             # Combine: pixels outside the driving ROI are also excluded.
