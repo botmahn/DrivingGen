@@ -7,7 +7,7 @@ import torch
 import gc
 import sys
 # sys.path.append("./sam2")
-sys.path.append("/shared_disk/users/yang.zhou/iclr_open_source/samurai/sam2")
+sys.path.append("/scratch/naman/DrivingGen/third_parties/samurai/sam2")
 from sam2.build_sam import build_sam2_video_predictor
 
 color = [(255, 0, 0)]
@@ -41,7 +41,7 @@ def prepare_frames_or_path(video_path):
         raise ValueError("Invalid video_path format. Should be .mp4 or a directory of jpg frames.")
 
 def samurai_main(
-        model_path='/shared_disk/users/yang.zhou/iclr_open_source/DrivingGen/ckpt/sam2.1_hiera_large.pt', 
+        model_path='/scratch/naman/DrivingGen/third_parties/samurai/sam2/checkpoints/sam2.1_hiera_large.pt', 
         video_path=None,
         txt_path=None,
         save_to_video=False,

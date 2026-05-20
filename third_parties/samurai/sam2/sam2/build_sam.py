@@ -155,6 +155,7 @@ def build_sam2_video_predictor_hf(model_id, **kwargs):
 
 
 def _load_checkpoint(model, ckpt_path):
+    ckpt_path = '/scratch/naman/DrivingGen/third_parties/samurai/sam2/checkpoints/sam2.1_hiera_large.pt' 
     if ckpt_path is not None:
         sd = torch.load(ckpt_path, map_location="cpu", weights_only=True)["model"]
         missing_keys, unexpected_keys = model.load_state_dict(sd)

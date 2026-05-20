@@ -150,7 +150,7 @@ def init_det_model():
     global det_model
     # Load YOLOv10x weights and push to GPU
     det_model = YOLOv10(
-        '/shared_disk/users/yang.zhou/iclr_open_source/DrivingGen/ckpt/yolov10x.pt'
+        '/scratch/naman/DrivingGen/pretrained_models/yolov10x.pt'
     ).cuda()
 
 
@@ -643,6 +643,26 @@ if __name__ == '__main__':
         print(f'{args.local_id}: {run}')
 
         # ------------------------------------------------------------------
+        # Build output directory structure
+        # ------------------------------------------------------------------
+        if model_name == 'gt':
+            # GT path pattern: …/<scene_a>+<scene_b>/<cam>/
+            s_name   = run.split('/')[-3] + '+' + run.split('/')[-2]
+            log_base = os.path.join(args.outdir, s_name, model_name, 'unidepth')
+        else:
+            # Generated path pattern: …/<scene>/<model>/<exp_id>/images/
+            s_name   = run.split('/')[-4]
+            log_base = os.path.join(args.outdir, s_name, model_name, exp_id, 'unidepth')
+            print(f"Log Base: {log_base}")
+
+        # If the cached ego trajectory is missing, skip this video completely.
+        # This avoids running UniDepth/YOLO/SAMURAI or creating partial outputs.
+        ego_traj_path = log_base.replace("/unidepth", "") + '/unidepth-estimate_ego_traj.pkl'
+        if not os.path.exists(ego_traj_path):
+            print(f"Skipping {run}: ego_traj_path does not exist: {ego_traj_path}")
+            continue
+
+        # ------------------------------------------------------------------
         # Stage 0: Collect and sort frame file paths
         # ------------------------------------------------------------------
         filenames = os.listdir(run)
@@ -658,18 +678,6 @@ if __name__ == '__main__':
         depths_mov     = []   # (unused accumulator, reserved for future use)
         track_masks    = []   # (unused accumulator, reserved for future use)
         track_bboxs    = []   # (unused accumulator, reserved for future use)
-
-        # ------------------------------------------------------------------
-        # Build output directory structure
-        # ------------------------------------------------------------------
-        if model_name == 'gt':
-            # GT path pattern: …/<scene_a>+<scene_b>/<cam>/
-            s_name   = run.split('/')[-3] + '+' + run.split('/')[-2]
-            log_base = os.path.join(args.outdir, s_name, model_name, 'unidepth')
-        else:
-            # Generated path pattern: …/<scene>/<model>/<exp_id>/images/
-            s_name   = run.split('/')[-4]
-            log_base = os.path.join(args.outdir, s_name, model_name, exp_id, 'unidepth')
 
         # Directory for per-frame colourised depth images
         depth_out_dir = os.path.join(log_base, 'depth_frame')
@@ -757,7 +765,7 @@ if __name__ == '__main__':
         # ------------------------------------------------------------------
         # Helper: write a list of images to an MP4 video
         # ------------------------------------------------------------------
-        from moviepy.editor import ImageSequenceClip
+        from moviepy import ImageSequenceClip
 
         def images_to_video(image_folder, output_video, fps=30):
             """
@@ -784,102 +792,21 @@ if __name__ == '__main__':
             clip.write_videofile(
                 output_video,
                 codec="libx264",
-                verbose=False,
+                # verbose=False,
                 logger=None,
             )
 
         # ------------------------------------------------------------------
-        # Stage 3: Ego trajectory estimation (VisualSLAM)
+        # Stage 3: Load cached ego trajectory
         # ------------------------------------------------------------------
-        # If a cached ego trajectory already exists on disk, load it;
-        # otherwise run the full VisualSLAM pipeline.
-        if not os.path.exists(log_base + '-estimate_ego_traj.pkl'):
-            # -----------------------------------------------------------------
-            # Full VisualSLAM pipeline (runs only if no cached result exists)
-            # -----------------------------------------------------------------
-            import pdb
-            pdb.set_trace()   # breakpoint for debugging missing ego trajectories
-
-            # Path to pre-recorded ground-truth camera intrinsics
-            meta_path = '/mnt/cache/zhouyang/dg-bench/nuplan_1.1/val_sensor_data_10hz_0530'
-            s_name = s_name.split('+')
-            intrinsics_path = os.path.join(
-                meta_path,
-                s_name[0] + '+' + s_name[1],
-                s_name[2],
-                'intrinsic.npy',
-            )
-
-            # For 20-conditioning-frame experiments, use frames 19-99 (81 frames)
-            if 'conds_20' in args.exp_id:
-                rgb_intrinsics = np.load(intrinsics_path, allow_pickle=True)[19:100]
-            else:
-                rgb_intrinsics = np.load(intrinsics_path, allow_pickle=True)
-
-            # Wrap the collected data into the VisualSLAM dataset container
-            dataset_handler = DatasetHandler(rgbs, depths_raw, rgb_intrinsics)
-
-            check_data(dataset_handler, args.outdir)
-
-            # Part I: Extract ORB/SIFT features from all frames
-            # images : list of processed grayscale frames
-            # masks  : list of (H, W) uint8 — regions excluded from feature detection
-            images = dataset_handler.images
-            kp_list, des_list = extract_features_dataset(images, masks)
-            # kp_list  : list of N_frames × N_keypoints keypoints
-            # des_list : list of N_frames × (N_keypoints, D) descriptors
-
-            # Part II: Match feature descriptors across consecutive frame pairs
-            matches, matches2 = match_features_dataset(des_list)
-
-            # Optionally filter matches by Lowe's ratio test
-            is_main_filtered_m = True   # set False to use raw matches
-            if is_main_filtered_m:
-                dist_threshold  = 0.7   # Lowe ratio threshold (0.7 is standard)
-                filtered_matches = filter_matches_dataset(matches, dist_threshold, matches2)
-                matches = filtered_matches
-
-            # Part III: Estimate camera trajectory from filtered matches
-            depth_maps = dataset_handler.depth_maps
-            try:
-                # trajectory  : shape (3, N_frames) — world-space XYZ of camera centre
-                # poses_3x3   : list of N_frames (R 3×3, T 3) tuples
-                trajectory, poses_3x3 = estimate_trajectory(
-                    matches, kp_list, dataset_handler.k,
-                    depth_maps=depth_maps,
-                    dataset_handler=dataset_handler,
-                )
-            except Exception as e:
-                print(e)
-                print(f'extract ego fail for {run}')
-                continue   # skip this scene on failure
-
-            # Extract the 2-D top-down (X, Z) ego positions
-            locs = []
-            for i in range(0, trajectory.shape[1]):
-                current_pos = trajectory[:, i]   # shape (3,)
-                locs.append([current_pos.item(0), current_pos.item(2)])   # [X, Z]
-
-            # locs : shape (N_frames, 2), dtype float32
-            locs = np.array(locs, dtype=np.float32)
-
-            # Cache the ego trajectory to disk
-            ego_traj = {
-                'locs':     locs,        # shape (N_frames, 2)
-                'poses_3x3': poses_3x3,  # list of N_frames (R, T) tuples
-            }
-            import pickle
-            with open(log_base + '-estimate_ego_traj.pkl', 'wb') as f:
-                pickle.dump(ego_traj, f)
-
-        else:
-            # Load previously computed ego trajectory from cache
-            print('loading existing ego')
-            import pickle
-            with open(log_base + '-estimate_ego_traj.pkl', 'rb') as f:
-                ego_traj = pickle.load(f)
-            locs      = ego_traj['locs']        # shape (N_frames, 2)
-            poses_3x3 = ego_traj['poses_3x3']   # list of (R 3×3, T 3) tuples
+        # Missing ego trajectories are skipped near the start of the scene loop,
+        # so this point should only be reached when the cache exists.
+        print('loading existing ego')
+        import pickle
+        with open(ego_traj_path, 'rb') as f:
+            ego_traj = pickle.load(f)
+        locs      = ego_traj['locs']        # shape (N_frames, 2)
+        poses_3x3 = ego_traj['poses_3x3']   # list of (R 3×3, T 3) tuples
 
         # ------------------------------------------------------------------
         # Stage 4: SAMURAI tracking for each detected agent
