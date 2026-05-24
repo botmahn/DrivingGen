@@ -2,3 +2,6 @@ data/
 __pycache__/
 outputs/
 pretrained_models/
+drivinggen_input_dataset/
+benchmark_results/
+.DS_Store
